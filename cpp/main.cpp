@@ -10,6 +10,7 @@ using namespace arma;
 
 int main(int argc, char** argv) {
     int sample_frequency = 16000;
+    int num_mel_bins = 80;
     int frame_shift = 10;
     int frame_length = 25;
     bool round_to_power_of_two = true;
@@ -65,9 +66,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto window_paras = get_waveform_and_window_properties(waveform, 0, sample_frequency, frame_shift, frame_length, round_to_power_of_two, preemphasis_coefficient);
-    std::cout << window_paras(0) << std::endl;
-    std::cout << window_paras(1) << std::endl;
-    std::cout << window_paras(2) << std::endl;
+    auto feats = fbank(waveform, num_mel_bins, frame_length, frame_shift, sample_frequency, 0.0, 0.0);
     return 0;
 }
