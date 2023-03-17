@@ -10,7 +10,10 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR})
 message("cur dir: ${PROJECT_SOURCE_DIR}")
  
 include_directories(${PROJECT_SOURCE_DIR}/include)
- 
+
+# set(ARMADILLO_INCLUDE_DIR /data/WeNet/armadillo-12.0.1/include)
+# include_directories(${ARMADILLO_INCLUDE_DIR})
+
 find_package(Armadillo REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SNDFILE REQUIRED sndfile)

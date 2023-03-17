@@ -17,3 +17,16 @@ arma::mat as_strided(const arma::mat& X, int n_rows, int n_cols, int row_stride,
     } 
     return result;
 }
+
+arma::mat pad(const arma::mat& X, int num, int dim) {
+    arma::mat result(X);
+    for(int i = 0; i < num - 1; i++) {
+        if(dim == 0) {
+            result = arma::join_cols(result, X);
+        }
+        else {
+            result = arma::join_rows(result, X);
+        }
+    }
+    return result;
+}

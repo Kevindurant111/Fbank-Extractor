@@ -50,11 +50,41 @@ void get_strided(arma::mat& input, int window_size, int window_shift, bool snip_
 }
 
 arma::mat get_log_energy(const arma::mat& input, double epsilon, float energy_floor) {
-    arma::mat log_energy = arma::log(arma::max(sum(square(input), 1), arma::mat(input.n_rows, 1, arma::fill::value(epsilon))));
-    return log_energy;
+    // arma::mat log_energy = arma::log(arma::max(sum(square(input), 1), arma::mat(input.n_rows, 1, arma::fill::value(epsilon))));
+    // if (energy_floor == 0.0) {
+    //     return log_energy;
+    // }
+    // return arma::max(log_energy, arma::mat(log_energy.n_rows, log_energy.n_cols, arma::fill::value(log(epsilon))));
+    arma::mat log_energy = arma::log(arma::max(sum(square(input), 1), epsilon * arma::mat(input.n_rows, 1, arma::fill::ones)));
+    if (energy_floor == 0.0) {
+        return log_energy;
+    }
+    return arma::max(log_energy, log(epsilon) * arma::mat(log_energy.n_rows, log_energy.n_cols, arma::fill::ones));
 }
 
-arma::mat get_window(arma::mat& input, int padded_window_size, int window_size, int window_shift, float energy_floor, std::string window_type, float blackman_coeff, bool snip_edges, bool raw_energy, float dither, bool remove_dc_offset, float preemphasis_coefficient) {
+arma::mat feature_window_function(const std::string& window_type, int window_size, float blackman_coeff) {
+    if(window_type == "povey") {
+        return hann_window(window_size);
+    }
+    else {
+        std::cerr << "Invalid window type " + window_type<< std::endl;
+        exit(1);
+    }
+    return arma::mat();
+}
+
+arma::mat hann_window(int window_size) {
+    // generate symmetric hann window
+    assert(window_size > 0 && "window size must greater than 0!");
+    arma::mat window(1, window_size, arma::fill::zeros);
+    for(int i = 0; i < window_size; i++) {
+        window(0, i) = pow(0.5 * (1 - cos(2 * M_PI * i / (window_size - 1))), 0.85);
+    }
+    return window;
+}
+
+arma::mat get_window(arma::mat& input, int padded_window_size, int window_size, int window_shift, float energy_floor, const std::string& window_type, float blackman_coeff, bool snip_edges, bool raw_energy, float dither, bool remove_dc_offset, float preemphasis_coefficient) {
+    arma::mat signal_log_energy;
     double epsilon = get_epsilon();
     get_strided(input, window_size, window_shift);
     if(dither != 0.0) {
@@ -63,29 +93,69 @@ arma::mat get_window(arma::mat& input, int padded_window_size, int window_size, 
     }
     if(remove_dc_offset) {
         arma::mat mean_value = arma::mean(input, 1);
-        std::cout << mean_value.n_rows << std::endl;
-        std::cout << mean_value.n_cols << std::endl;
         arma::mat mean_value_padding(input.n_rows, input.n_cols);
-        for(int i = 0; i < input.n_cols; i++) {
+        for(arma::uword i = 0; i < input.n_cols; i++) {
             mean_value_padding.col(i) = mean_value.col(0);
         }
         input = input - mean_value_padding;
-        std::cout << input(0, 0) << std::endl;
-        std::cout << input(0, 1) << std::endl;
-        std::cout << input(0, 2) << std::endl;
-        std::cout << input(1, 0) << std::endl;
-        std::cout << input(1, 1) << std::endl;
-        std::cout << input(2, 2) << std::endl;
-        std::cout << input(417, 0) << std::endl;
-        std::cout << input(417, 1) << std::endl;
-        std::cout << input(417, 2) << std::endl;
     }
     if(raw_energy) {
-        auto signal_log_energy = get_log_energy(input, epsilon, energy_floor);
+        signal_log_energy = get_log_energy(input, epsilon, energy_floor);
     }
+    if(preemphasis_coefficient != 0.0) {
+        arma::mat first_col = input.col(0);
+        arma::mat offset_strided_input = arma::join_rows(first_col, input);
+        input = input - preemphasis_coefficient * offset_strided_input.submat(0, 0, offset_strided_input.n_rows - 1, offset_strided_input.n_cols - 2);
+    }
+    auto window = feature_window_function(window_type, window_size, 0.0);
+    input = input % pad(window, input.n_rows, 0);
+    if(padded_window_size != window_size) {
+        int padding_right = padded_window_size - window_size;
+        arma::mat pad_matrix(input.n_rows, padding_right, arma::fill::zeros);
+        input = arma::join_rows(input, pad_matrix);
+    }
+    // Compute energy after window function (not the raw one)
+    if(!raw_energy) {
+        signal_log_energy = get_log_energy(input, epsilon, energy_floor);
+    }
+
+    return signal_log_energy;
 }
 
 arma::mat fbank(arma::mat input, int num_mel_bins, int frame_length, int frame_shift, int sample_frequency, float dither, float energy_floor) {
     auto window_paras = get_waveform_and_window_properties(input, 0, sample_frequency, frame_shift, frame_length);
     auto signal_log_energy = get_window(input, window_paras(2), window_paras(1), window_paras(0), 0.0);
+    
+    // Real Fast Fourier Transform
+    arma::mat spectrum(input.n_rows, floor(input.n_cols / 2) + 1, arma::fill::zeros);
+    for(arma::uword i = 0; i < spectrum.n_rows; i++) {
+        arma::rowvec v = input.row(i);
+        arma::cx_rowvec fft_v = arma::fft(v);
+        arma::rowvec real_v = arma::pow(arma::pow(arma::real(fft_v), 2.0) + arma::pow(arma::imag(fft_v), 2.0), 0.5);
+        real_v = real_v.subvec(0, floor(real_v.n_cols / 2));
+        spectrum.row(i) = real_v;
+    }
+    
+    // arma::mat spectrum(input.n_rows, floor(input.n_cols / 2) + 1);
+    // for(arma::uword i = 0; i < 1; i++) {
+    //     arma::colvec v = input.col(i);
+    //     arma::rowvec v1 = v;
+    //     arma::colvec real_v = arma::real(arma::fft(v1));
+    //     real_v.print();
+    //     // real_v = real_v.subvec(0, floor(real_v.n_cols / 2));
+    //     spectrum.col(i) = real_v;
+    // }
+    // spectrum = arma::abs(spectrum);
+
+    std::cout << spectrum.n_rows << std::endl;
+    std::cout << spectrum.n_cols << std::endl;
+    std::cout << spectrum(0, 0) << std::endl;
+    std::cout << spectrum(0, 1) << std::endl;
+    std::cout << spectrum(0, 2) << std::endl;
+    std::cout << spectrum(417, 0) << std::endl;
+    std::cout << spectrum(417, 1) << std::endl;
+    std::cout << spectrum(417, 2) << std::endl;
+    std::cout << spectrum(417, 254) << std::endl;
+    std::cout << spectrum(417, 255) << std::endl;
+    std::cout << spectrum(417, 256) << std::endl;
 }

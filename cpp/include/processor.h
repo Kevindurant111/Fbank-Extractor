@@ -35,12 +35,19 @@ arma::mat get_log_energy(const arma::mat& input,
     float energy_floor
 );
 
+arma::mat feature_window_function(const std::string& window_type,
+    int window_size,
+    float blackman_coeff
+);
+
+arma::mat hann_window(int window_size);
+
 arma::mat get_window(arma::mat& input, 
     int padded_window_size, 
     int window_size, 
     int window_shift,
     float energy_floor = 1.0, 
-    std::string window_type = "povey",
+    const std::string& window_type = "povey",
     float blackman_coeff = 0.42,
     bool snip_edges = true,
     bool raw_energy = true, 
