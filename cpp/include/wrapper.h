@@ -12,3 +12,6 @@ arma::mat pad(const arma::mat& X,
     int num,
     int dim = 0
 );
+
+// Generate a matrix of shape [size, 1] with elements increasing linearly from 0 to size-1 
+arma::mat arange(int size);

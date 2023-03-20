@@ -20,7 +20,7 @@ arma::mat as_strided(const arma::mat& X, int n_rows, int n_cols, int row_stride,
 
 arma::mat pad(const arma::mat& X, int num, int dim) {
     arma::mat result(X);
-    for(int i = 0; i < num - 1; i++) {
+    for(int i = 0; i < num; i++) {
         if(dim == 0) {
             result = arma::join_cols(result, X);
         }
@@ -29,4 +29,11 @@ arma::mat pad(const arma::mat& X, int num, int dim) {
         }
     }
     return result;
+}
+
+arma::mat arange(int size) {
+    arma::vec lin_vec = arma::linspace(0, size - 1, size);
+    arma::mat lin_mat(size, 1);
+    lin_mat.col(0) = lin_vec;
+    return lin_mat;
 }

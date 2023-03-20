@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
     int frame_shift = 10;
     int frame_length = 25;
     bool round_to_power_of_two = true;
-    float preemphasis_coefficient = 0.97;
+    double preemphasis_coefficient = 0.97;
 
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <wav_file_path>" << std::endl;
@@ -36,8 +36,8 @@ int main(int argc, char** argv) {
 
     // Read the samples into a buffer
     const int buffer_size = sfinfo.frames * sfinfo.channels;
-    float buffer[buffer_size];
-    sf_count_t samples_read = sf_read_float(sndfile, buffer, buffer_size);
+    double buffer[buffer_size];
+    sf_count_t samples_read = sf_read_double(sndfile, buffer, buffer_size);
 
     std::cout << "Samples read: " << samples_read << std::endl;
 
@@ -66,6 +66,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto feats = fbank(waveform, num_mel_bins, frame_length, frame_shift, sample_frequency, 0.0, 0.0);
+    auto feats = fbank(waveform, num_mel_bins, frame_length, frame_shift, sample_frequency, 0.0, 0.0, true, true);
     return 0;
 }

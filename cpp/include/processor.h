@@ -21,7 +21,7 @@ arma::vec get_waveform_and_window_properties(arma::mat& input,
     int frame_shift, 
     int frame_length, 
     bool round_to_power_of_two, 
-    float preemphasis_coefficient
+    double preemphasis_coefficient
 );
 
 void get_strided(arma::mat& input, 
@@ -32,12 +32,12 @@ void get_strided(arma::mat& input,
 
 arma::mat get_log_energy(const arma::mat& input, 
     double epsilon, 
-    float energy_floor
+    double energy_floor
 );
 
 arma::mat feature_window_function(const std::string& window_type,
     int window_size,
-    float blackman_coeff
+    double blackman_coeff
 );
 
 arma::mat hann_window(int window_size);
@@ -46,14 +46,30 @@ arma::mat get_window(arma::mat& input,
     int padded_window_size, 
     int window_size, 
     int window_shift,
-    float energy_floor = 1.0, 
+    double energy_floor = 1.0, 
     const std::string& window_type = "povey",
-    float blackman_coeff = 0.42,
+    double blackman_coeff = 0.42,
     bool snip_edges = true,
     bool raw_energy = true, 
-    float dither = 0.0,
+    double dither = 0.0,
     bool remove_dc_offset = true,
-    float preemphasis_coefficient = 0.97
+    double preemphasis_coefficient = 0.97
+);
+
+arma::mat inverse_mel_scale(const arma::mat& mel_freq);
+
+arma::mat mel_scale(const arma::mat& freq);
+
+double mel_scale_scalar(double freq);
+
+arma::mat get_mel_banks(int num_bins,
+    int window_length_padded,
+    double sample_freq,
+    double low_freq,
+    double high_freq,
+    double vtln_low,
+    double vtln_high,
+    double vtln_warp_factor
 );
 
 arma::mat fbank(arma::mat input,
@@ -61,6 +77,8 @@ arma::mat fbank(arma::mat input,
     int frame_length, 
     int frame_shift, 
     int sample_frequency, 
-    float dither = 0.0, 
-    float energy_floor = 1.0
+    double dither = 0.0, 
+    double energy_floor = 1.0,
+    bool use_power = true,
+    bool use_log_fbank = true
 );
