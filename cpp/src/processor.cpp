@@ -2,7 +2,10 @@
 #include "wrapper.h"
 #define MILLISECONDS_TO_SECONDS 0.001
 
-arma::mat resample(arma::mat input, int sample_rate, int resample_rate) {}
+// todo
+arma::mat resample(arma::mat input, int sample_rate, int resample_rate) {
+    return input; 
+}
 
 int bit_length(int n) {
     // Find the position of the most significant bit set
@@ -208,17 +211,14 @@ arma::mat fbank(arma::mat input, int num_mel_bins, int frame_length, int frame_s
     }
 
     arma::mat mel_energies = get_mel_banks(num_mel_bins, window_paras(2), sample_frequency, 20.0, 0.0, 100.0, -500.0, 1.0);
-    mel_energies = arma::join_rows(mel_energies, arma::mat());
+    mel_energies = arma::join_rows(mel_energies, arma::mat(mel_energies.n_rows, 1, arma::fill::zeros));
 
-    std::cout << mel_energies.n_rows << std::endl;
-    std::cout << mel_energies.n_cols << std::endl;
-    std::cout << mel_energies(0, 0) << std::endl;
-    std::cout << mel_energies(0, 1) << std::endl;
-    std::cout << mel_energies(0, 2) << std::endl;
-    std::cout << mel_energies(79, 0) << std::endl;
-    std::cout << mel_energies(79, 1) << std::endl;
-    std::cout << mel_energies(79, 2) << std::endl;
-    std::cout << mel_energies(79, 253) << std::endl;
-    std::cout << mel_energies(79, 254) << std::endl;
-    std::cout << mel_energies(79, 255) << std::endl;
+    mel_energies = spectrum * arma::trans(mel_energies);
+
+    if(use_log_fbank) {
+        mel_energies = arma::log(arma::max(mel_energies, get_epsilon() * arma::mat(mel_energies.n_rows, mel_energies.n_cols, arma::fill::ones)));
+    }
+
+    // todo:use_energy
+    return mel_energies;
 }

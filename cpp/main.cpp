@@ -13,8 +13,8 @@ int main(int argc, char** argv) {
     int num_mel_bins = 80;
     int frame_shift = 10;
     int frame_length = 25;
-    bool round_to_power_of_two = true;
-    double preemphasis_coefficient = 0.97;
+    // bool round_to_power_of_two = true;
+    // double preemphasis_coefficient = 0.97;
 
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <wav_file_path>" << std::endl;
@@ -67,5 +67,8 @@ int main(int argc, char** argv) {
     }
 
     auto feats = fbank(waveform, num_mel_bins, frame_length, frame_shift, sample_frequency, 0.0, 0.0, true, true);
+    
+    // todo:spec_sub
+
     return 0;
 }
