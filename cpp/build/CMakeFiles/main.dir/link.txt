@@ -1,1 +1,0 @@
-/usr/bin/c++  -O0 -Wall -g -ggdb CMakeFiles/main.dir/main.cpp.o CMakeFiles/main.dir/src/processor.cpp.o CMakeFiles/main.dir/src/wrapper.cpp.o -o ../main  -lm /usr/lib/libarmadillo.so -lsndfile 

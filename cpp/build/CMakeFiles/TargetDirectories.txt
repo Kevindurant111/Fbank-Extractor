@@ -1,3 +1,0 @@
-/data/WeNet/Fbank-Extractor/cpp/build/CMakeFiles/rebuild_cache.dir
-/data/WeNet/Fbank-Extractor/cpp/build/CMakeFiles/main.dir
-/data/WeNet/Fbank-Extractor/cpp/build/CMakeFiles/edit_cache.dir
