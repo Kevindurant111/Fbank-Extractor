@@ -20,5 +20,5 @@ pkg_check_modules(SNDFILE REQUIRED sndfile)
 
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRC_FILES)
 add_executable(${PROJECT_NAME} main.cpp ${SRC_FILES})
-target_link_libraries(${PROJECT_NAME} m ${ARMADILLO_LIBRARIES} ${SNDFILE_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${ARMADILLO_LIBRARIES} ${SNDFILE_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${SNDFILE_INCLUDE_DIRS})
