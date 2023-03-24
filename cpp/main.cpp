@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     // Close the file
     sf_close(sndfile);
 
-    arma::mat waveform = arma::mat(sfinfo.channels, sfinfo.frames);
+    arma::fmat waveform = arma::fmat(sfinfo.channels, sfinfo.frames);
     if(sfinfo.channels == 1) {
         for (int i = 0; i < sfinfo.frames; i++) {
             waveform(0, i) = buffer[i] * (1 << 15);

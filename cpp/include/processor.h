@@ -4,7 +4,7 @@
 #include <string>
 #include <assert.h>
 
-arma::mat resample(arma::mat input, 
+arma::fmat resample(arma::fmat input, 
     int sample_rate, 
     int resample_rate
 );
@@ -15,7 +15,7 @@ int next_power_of_2(int x);
 
 double get_epsilon(); 
 
-arma::vec get_waveform_and_window_properties(arma::mat& input, 
+arma::vec get_waveform_and_window_properties(arma::fmat& input, 
     int channel, 
     int sample_frequency, 
     int frame_shift, 
@@ -24,25 +24,25 @@ arma::vec get_waveform_and_window_properties(arma::mat& input,
     double preemphasis_coefficient
 );
 
-void get_strided(arma::mat& input, 
+void get_strided(arma::fmat& input, 
     int window_size, 
     int window_shift, 
     bool snip_edges = true
 );
 
-arma::mat get_log_energy(const arma::mat& input, 
+arma::fmat get_log_energy(const arma::fmat& input, 
     double epsilon, 
     double energy_floor
 );
 
-arma::mat feature_window_function(const std::string& window_type,
+arma::fmat feature_window_function(const std::string& window_type,
     int window_size,
     double blackman_coeff
 );
 
-arma::mat hann_window(int window_size);
+arma::fmat hann_window(int window_size);
 
-arma::mat get_window(arma::mat& input, 
+arma::fmat get_window(arma::fmat& input, 
     int padded_window_size, 
     int window_size, 
     int window_shift,
@@ -56,13 +56,13 @@ arma::mat get_window(arma::mat& input,
     double preemphasis_coefficient = 0.97
 );
 
-arma::mat inverse_mel_scale(const arma::mat& mel_freq);
+arma::fmat inverse_mel_scale(const arma::fmat& mel_freq);
 
-arma::mat mel_scale(const arma::mat& freq);
+arma::fmat mel_scale(const arma::fmat& freq);
 
 double mel_scale_scalar(double freq);
 
-arma::mat get_mel_banks(int num_bins,
+arma::fmat get_mel_banks(int num_bins,
     int window_length_padded,
     double sample_freq,
     double low_freq,
@@ -72,7 +72,7 @@ arma::mat get_mel_banks(int num_bins,
     double vtln_warp_factor
 );
 
-arma::mat fbank(arma::mat input,
+arma::fmat fbank(arma::fmat input,
     int num_mel_bins, 
     int frame_length, 
     int frame_shift, 
