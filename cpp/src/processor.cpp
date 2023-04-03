@@ -1,5 +1,6 @@
 #include "processor.h"
 #include "wrapper.h"
+#include <chrono>
 #define MILLISECONDS_TO_SECONDS 0.001
 
 // todo
@@ -62,7 +63,7 @@ arma::fmat get_log_energy(const arma::fmat& input, double epsilon, double energy
     if (energy_floor == 0.0) {
         return log_energy;
     }
-    return arma::max(log_energy, log(epsilon) * arma::fmat(log_energy.n_rows, log_energy.n_cols, arma::fill::ones));
+    return arma::max(log_energy, log(epsilon) * arma::fmat(size(log_energy), arma::fill::ones));
 }
 
 arma::fmat feature_window_function(const std::string& window_type, int window_size, double blackman_coeff) {
@@ -79,44 +80,77 @@ arma::fmat feature_window_function(const std::string& window_type, int window_si
 arma::fmat hann_window(int window_size) {
     // generate symmetric hann window
     assert(window_size > 0 && "window size must greater than 0!");
-    arma::fmat window(1, window_size, arma::fill::zeros);
-    for(int i = 0; i < window_size; i++) {
-        window(0, i) = pow(0.5 * (1 - cos(2 * M_PI * i / (window_size - 1))), 0.85);
-    }
+    /* plan A: matrix operation */
+    arma::frowvec window_v = arma::linspace<arma::frowvec>(0, window_size - 1, window_size);
+    arma::fmat window(window_v);
+    window = arma::pow(0.5 * (1 - arma::cos(2 * M_PI * window_v / (window_size - 1))), 0.85);
+
+    /* plan B: element operation */
+    // arma::fmat window(1, window_size, arma::fill::zeros);
+    // for(int i = 0; i < window_size; i++) {
+    //     window(0, i) = pow(0.5 * (1 - cos(2 * M_PI * i / (window_size - 1))), 0.85);
+    // }
     return window;
 }
 
 arma::fmat get_window(arma::fmat& input, int padded_window_size, int window_size, int window_shift, double energy_floor, const std::string& window_type, double blackman_coeff, bool snip_edges, bool raw_energy, double dither, bool remove_dc_offset, double preemphasis_coefficient) {
     arma::fmat signal_log_energy;
     double epsilon = get_epsilon();
+    auto start_time = std::chrono::high_resolution_clock::now();
     get_strided(input, window_size, window_shift);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "get_strided程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
     if(dither != 0.0) {
         std::cout << "todo!!!" << std::endl;
         exit(0);       
     }
     if(remove_dc_offset) {
+        start_time = std::chrono::high_resolution_clock::now();
         arma::fmat mean_value = arma::mean(input, 1);
-        arma::fmat mean_value_padding(input.n_rows, input.n_cols);
+        arma::fmat mean_value_padding(size(input));
         for(arma::uword i = 0; i < input.n_cols; i++) {
             mean_value_padding.col(i) = mean_value.col(0);
         }
         input = input - mean_value_padding;
+        end_time = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        std::cout << "remove_dc_offset程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
     }
     if(raw_energy) {
+        start_time = std::chrono::high_resolution_clock::now();
         signal_log_energy = get_log_energy(input, epsilon, energy_floor);
+            end_time = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        std::cout << "remove_dc_offset程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
     }
     if(preemphasis_coefficient != 0.0) {
+        start_time = std::chrono::high_resolution_clock::now();
         arma::fmat first_col = input.col(0);
         arma::fmat offset_strided_input = arma::join_rows(first_col, input);
         input = input - preemphasis_coefficient * offset_strided_input.submat(0, 0, offset_strided_input.n_rows - 1, offset_strided_input.n_cols - 2);
+                    end_time = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        std::cout << "preemphasis_coefficient程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
     }
+    start_time = std::chrono::high_resolution_clock::now();
     auto window = feature_window_function(window_type, window_size, 0.0);
-    input = input % pad(window, input.n_rows - 1, 0);
+
+    /*plan A: 9ms */
+    for(int i = 0; i < input.n_rows; i++) {
+        input.row(i) = input.row(i) % window;
+    }
+    /* plan B: 52ms */
+    //input = input % pad(window, input.n_rows - 1, 0);
+    end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "feature_window_function程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
     if(padded_window_size != window_size) {
         int padding_right = padded_window_size - window_size;
         arma::fmat pad_matrix(input.n_rows, padding_right, arma::fill::zeros);
         input = arma::join_rows(input, pad_matrix);
     }
+
     // Compute energy after window function (not the raw one)
     if(!raw_energy) {
         signal_log_energy = get_log_energy(input, epsilon, energy_floor);
@@ -183,7 +217,7 @@ arma::fmat get_mel_banks(int num_bins, int window_length_padded, double sample_f
 
     arma::fmat bins;
     if(vtln_warp_factor == 1.0) {
-        bins = arma::max(arma::fmat(up_slope.n_rows, up_slope.n_cols, arma::fill::zeros), arma::min(up_slope, down_slope));
+        bins = arma::max(arma::fmat(size(up_slope), arma::fill::zeros), arma::min(up_slope, down_slope));
     }
     else {
         std::cout << "todo!!!" << std::endl;
@@ -193,10 +227,29 @@ arma::fmat get_mel_banks(int num_bins, int window_length_padded, double sample_f
 }
 
 arma::fmat fbank(arma::fmat input, int num_mel_bins, int frame_length, int frame_shift, int sample_frequency, double dither, double energy_floor, bool use_power, bool use_log_fbank) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    /* get_waveform_and_window_properties: 1ms */
     auto window_paras = get_waveform_and_window_properties(input, 0, sample_frequency, frame_shift, frame_length);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
+
+    start_time = std::chrono::high_resolution_clock::now();
+    /* get_window: 93ms */
     auto signal_log_energy = get_window(input, window_paras(2), window_paras(1), window_paras(0), 0.0);
-    
+    end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
+
+    start_time = std::chrono::high_resolution_clock::now();    
     // Real Fast Fourier Transform
+    /* plan A: 220ms */
+    // arma::cx_fmat fft_out = arma::fft(trans(input)); // 129ms
+    // fft_out = trans(fft_out); // 36ms
+    // arma::fmat spectrum = arma::pow(arma::pow(arma::real(fft_out), 2.0) + arma::pow(arma::imag(fft_out), 2.0), 0.5); // 55ms
+    // spectrum = spectrum.submat(0, 0, spectrum.n_rows - 1, floor(spectrum.n_cols / 2));
+
+    /*plan B: 212ms */
     arma::fmat spectrum(input.n_rows, floor(input.n_cols / 2) + 1, arma::fill::zeros);
     for(arma::uword i = 0; i < spectrum.n_rows; i++) {
         arma::frowvec v = input.row(i);
@@ -205,7 +258,11 @@ arma::fmat fbank(arma::fmat input, int num_mel_bins, int frame_length, int frame
         real_v = real_v.subvec(0, floor(real_v.n_cols / 2));
         spectrum.row(i) = real_v;
     }
-
+    end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
+    start_time = std::chrono::high_resolution_clock::now();
+    /* rest: 22 ms */   
     if(use_power) {
         spectrum = arma::pow(spectrum, 2.0);
     }
@@ -214,11 +271,15 @@ arma::fmat fbank(arma::fmat input, int num_mel_bins, int frame_length, int frame
     mel_energies = arma::join_rows(mel_energies, arma::fmat(mel_energies.n_rows, 1, arma::fill::zeros));
 
     mel_energies = arma::trans(mel_energies);
-    mel_energies = matmul(spectrum, mel_energies);
+    // mel_energies = matmul(spectrum, mel_energies);
+    mel_energies = spectrum * mel_energies;
     
     if(use_log_fbank) {
-        mel_energies = arma::log(arma::max(mel_energies, get_epsilon() * arma::fmat(mel_energies.n_rows, mel_energies.n_cols, arma::fill::ones)));
+        mel_energies = arma::log(arma::max(mel_energies, get_epsilon() * arma::fmat(size(mel_energies), arma::fill::ones)));
     }
+    end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "程序运行时间为 " << duration.count() << " 毫秒" << std::endl;
 
     // todo:use_energy
     return mel_energies;
