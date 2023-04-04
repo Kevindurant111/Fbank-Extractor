@@ -254,8 +254,8 @@ arma::fmat fbank(arma::fmat input, int num_mel_bins, int frame_length, int frame
     for(arma::uword i = 0; i < spectrum.n_rows; i++) {
         arma::frowvec v = input.row(i);
         arma::cx_frowvec fft_v = arma::fft(v);
+        fft_v = fft_v.subvec(0, floor(fft_v.n_cols / 2));
         arma::frowvec real_v = arma::pow(arma::pow(arma::real(fft_v), 2.0) + arma::pow(arma::imag(fft_v), 2.0), 0.5);
-        real_v = real_v.subvec(0, floor(real_v.n_cols / 2));
         spectrum.row(i) = real_v;
     }
     end_time = std::chrono::high_resolution_clock::now();
